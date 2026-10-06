@@ -760,9 +760,8 @@
           <select id="genRole"></select>
         </div>
         <div class="field">
-          <label for="genEmotion">情绪（选填）</label>
-          <input type="text" id="genEmotion" list="genEmotionOptions" placeholder="默认 · 平静" maxlength="30" autocomplete="off">
-          <datalist id="genEmotionOptions"></datalist>
+          <label for="genEmotion">情绪</label>
+          <select id="genEmotion"></select>
         </div>
         </div>
         <div id="designFields" role="tabpanel" aria-labelledby="designTab" hidden>
@@ -1199,6 +1198,12 @@
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     function setStatus(t) { statusText.textContent = t; }
     function setGenStatus(t, cls = "") {
+      if (cls === "err") {
+        genStatus.textContent = "";
+        genStatus.className = "gen-status";
+        setStatus(t);
+        return;
+      }
       genStatus.textContent = t;
       genStatus.className = "gen-status " + cls;
     }
@@ -2232,8 +2237,9 @@
       title.disabled = locked;
       title.onclick = () => openEdit(clip);
       const meta = document.createElement('div');
-      meta.className = 'clip-meta' + (clip.error ? ' clip-error' : '');
-      meta.textContent = clip.error || [LANGUAGE_NAMES[clip.language] || clip.language,
+      meta.className = 'clip-meta';
+      meta.title = clip.error || '';
+      meta.textContent = [LANGUAGE_NAMES[clip.language] || clip.language,
         clip.url ? '音频时长 ' + clip.duration.toFixed(2) + 's' : '未生成',
         clip.url ? generationTimeLabel(clip) : '',
         isDirty(clip) ? '参数已修改 · 待重新生成' : clip.url ? '已保存' : '',
@@ -2511,7 +2517,7 @@
         const o = document.createElement("option");
         o.value = ""; o.textContent = "(pt/ 下无角色)";
         genRole.appendChild(o);
-        fillEmotionOptions($('genEmotionOptions'), '');
+        onGeneratorRoleChange();
         updateGeneratorMode();
         return;
       }
@@ -2527,7 +2533,18 @@
 
     function onGeneratorRoleChange() {
       const role = genRole.value;
-      fillEmotionOptions($('genEmotionOptions'), role);
+      const emotions = rolesData[role] || [];
+      const previousEmotion = genEmotion.value;
+      genEmotion.replaceChildren(...emotions.map(emotion => new Option(emotion, emotion)));
+      if (emotions.length) {
+        genEmotion.value = emotions.includes(previousEmotion)
+          ? previousEmotion
+          : emotions.includes('平静') ? '平静' : emotions[0];
+        genEmotion.disabled = false;
+      } else {
+        genEmotion.add(new Option('无可用情绪', ''));
+        genEmotion.disabled = true;
+      }
       // 给生成器的角色下拉也着色
       applyRoleColorVars(genRole, role);
       applyRoleColorVars(genEmotion, role);
